@@ -5,15 +5,17 @@
 
 #include "rem8C.h"
 
-#include <stdio.h>
+#ifdef TESTING
+#include "t_rem8C.h"
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
 /******************** CPU & Internal ********************/
 
-#define SCREEN_WIDTH  0x40
-#define SCREEN_HEIGHT 0x20
 #define KEY_DEFAULT   0xFF
+#define MEM_SIZE      0x0FFF
 
 typedef struct rem8C {
   unsigned char data_reg[16];
@@ -25,7 +27,7 @@ typedef struct rem8C {
   unsigned short sprite_addr;
   unsigned char key;
   unsigned char screen[SCREEN_WIDTH][SCREEN_HEIGHT];
-  unsigned char memory[0xFFFF];
+  unsigned char memory[MEM_SIZE];
 } rem8C;
 
 #define SPRITE_WIDTH  5
@@ -68,11 +70,11 @@ void _rem8C_sprite_set(rem8C* cpu, unsigned short loc) {
 }
 
 void _rem8C_sprite_draw(rem8C* cpu, char X, char Y, unsigned char sprite) {
-  X %= SCREEN_WIDTH;
-  Y %= SCREEN_HEIGHT;
+  unsigned char X_pos = X % SCREEN_WIDTH;
+  unsigned char Y_pos = Y % SCREEN_HEIGHT;
   int i;
   for (i = 0; i < 8; i++) {
-    cpu->screen[X+i][Y] ^= (sprite >> (7 - i)) & 0x01;
+    cpu->screen[X_pos + i][Y_pos] ^= (sprite >> (7 - i)) & 0x01;
   }
 }
 
@@ -106,7 +108,6 @@ void _instr_00E0(rem8C* cpu) {
 /* Return from a subroutine */
 void _instr_00EE(rem8C* cpu) {
   _rem8C_pull_pc_from_stack(cpu);
-  cpu->pc += INSTR_SIZE;
 }
 
 /* Jump to address NNN */
@@ -193,18 +194,18 @@ void _instr_8XY4(rem8C* cpu) {
   unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char X_init = cpu->data_reg[X];
   cpu->data_reg[X] += cpu->data_reg[Y];
-  cpu->data_reg[0x0F] = 0x00;
   if (cpu->data_reg[X] < X_init) cpu->data_reg[0x0F] = 0x01;
+  else cpu->data_reg[0x0F] = 0x00;
 }
 
-/* Set VX to VX - VY , if borrow VF = 0x01 */
+/* Set VX to VX - VY , if borrow VF = 0x00 */
 void _instr_8XY5(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char X_init = cpu->data_reg[X];
   cpu->data_reg[X] -= cpu->data_reg[Y];
-  cpu->data_reg[0x0F] = 0x00;
-  if (cpu->data_reg[X] > X_init) cpu->data_reg[0x0F] = 0x01;
+  if (X_init >= cpu->data_reg[Y]) cpu->data_reg[0x0F] = 0x01;
+  else cpu->data_reg[0x0F] = 0x00;
 }
 
 /* Set VX to VY >> 1 , set VF to VY & 0x01 */
@@ -221,15 +222,15 @@ void _instr_8XY7(rem8C* cpu) {
   unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char X_init = cpu->data_reg[X];
   cpu->data_reg[X] = cpu->data_reg[Y] - cpu->data_reg[X];
-  cpu->data_reg[0x0F] = 0x01;
-  if (cpu->data_reg[Y] > X_init) cpu->data_reg[0x0F] = 0x00;
+  if (X_init <= cpu->data_reg[Y]) cpu->data_reg[0x0F] = 0x01;
+  else cpu->data_reg[0x0F] = 0x00;
 }
 
 /* Set VX to VY << 1 , set VF to VY & 0x01 */
 void _instr_8XYE(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
-  cpu->data_reg[0x0F] = cpu->data_reg[Y] & 0x80;
+  cpu->data_reg[0x0F] = ((cpu->data_reg[Y] & 0x80) != 0);
   cpu->data_reg[X] = cpu->data_reg[Y] << 1;
 }
 
@@ -342,17 +343,12 @@ void _instr_FX29(rem8C* cpu) {
 void _instr_FX33(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char val = cpu->data_reg[X];
-  unsigned int bcd = 0;
-  int shift = 0;
 
-  while (val > 0) {
-    bcd |= (val % 10) << (shift++ << 2);
+  int i;
+  for (i = 2; i >= 0; i--) {
+    cpu->memory[cpu->addr_reg + i] = val % 10;
     val /= 10;
   }
-
-  cpu->memory[cpu->addr_reg] = (bcd >> 16) & 0xFF;
-  cpu->memory[cpu->addr_reg + 1] = (bcd >> 8) & 0xFF;
-  cpu->memory[cpu->addr_reg + 2] = bcd & 0xFF;
 
   cpu->pc++;
 }
@@ -480,34 +476,17 @@ void rem8C_cycle(rem8C* cpu) {
 
 }
 
-void rem8C_print_screen(rem8C* cpu) {
-  printf("\e[1;1H\e[2J");
-  int c, r;
-  for (r = 0; r < SCREEN_HEIGHT; r++) {
-    for (c = 0; c < SCREEN_WIDTH; c++) {
-      if (cpu->screen[c][r]) {
-        printf("#");
-      } else {
-        printf(" ");
-      }
-    }
-    printf("\n");
+void rem8C_read_screen(rem8C* cpu, int X, int Y, void* buff, long size) {
+  unsigned char X_pos = X % SCREEN_WIDTH;
+  unsigned char Y_pos = Y % SCREEN_HEIGHT;
+  if (X_pos * Y_pos + size > SCREEN_WIDTH * SCREEN_HEIGHT) {
+    size -= (X_pos * Y_pos + size) - (SCREEN_WIDTH * SCREEN_HEIGHT);
   }
+  memcpy(buff, &cpu->screen[X_pos][Y_pos], size);
 }
 
 void rem8C_memset(rem8C* cpu, unsigned short addr, void* data, size_t size) {
   memcpy(&cpu->memory[addr], data, size);
-}
-
-/******************** Cpu Debug ********************/
-
-/*  @brief  Return data stored at register V{'reg'}.
- *  Note that if 'reg' is outside of the valid range,
- *  the value 0 is returned.
- */
-unsigned char rem8C_data_reg(rem8C* cpu, unsigned char reg) {
-  if (reg <= 15) return cpu->data_reg[reg];
-  return 0;
 }
 
 /******************** Create/Destroy Cpu ********************/
@@ -525,3 +504,4 @@ rem8C* rem8C_new() {
 void rem8C_free(rem8C* cpu) {
   free(cpu);
 }
+
