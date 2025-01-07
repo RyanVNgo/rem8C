@@ -3,19 +3,21 @@
  *  @author Ryan V. Ngo
  */
 
-#define _POSIX_C_SOURCE 199309L
-
+#include <SDL2/SDL_render.h>
 #include <stdio.h>
 #include <time.h>
-#include <ncurses.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_video.h>
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_keyboard.h>
 
 #include "rem8C.h"
 
-void initialize_display();
-void render_display(unsigned char screen_buff[SCREEN_WIDTH][SCREEN_HEIGHT]);
-void end_display();
+SDL_Window* create_window();
+void render_screen(SDL_Renderer* renderer, unsigned char data[SCREEN_WIDTH][SCREEN_HEIGHT]);
 
 int main(int argc, char* argv[]) {
+  /* rom loading */
   if (argc < 2) {
     printf("ROM not provided\n");
     return 1;
@@ -38,6 +40,7 @@ int main(int argc, char* argv[]) {
   fread(prog, sizeof(char), size, rom);
   fclose(rom);
 
+  /* preparing emulator */
   rem8C* cpu = rem8C_new();
 
   rem8C_memset(cpu, START_ADDR, prog, size);
@@ -45,53 +48,70 @@ int main(int argc, char* argv[]) {
 
   unsigned char screen_buff[SCREEN_WIDTH][SCREEN_HEIGHT] = {0};
 
-  initialize_display();
+  SDL_Window* window = create_window();
+  SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
 
   struct timespec clock_rate;
   clock_rate.tv_sec = 0;
-  clock_rate.tv_nsec = 2000 * 1000;
+  clock_rate.tv_nsec = 2 * 1000;
 
-  int i;
-  for (i = 0; i < 512;) {
+  /* running emulator */
+  int running = 1;
+  while (running) {
+    /* input logic */
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) running = 0;
+      if (event.type == SDL_KEYDOWN) {
+        if (event.key.keysym.sym == SDLK_ESCAPE) running = 0;
+      }
+      if (event.type == SDL_KEYDOWN) rem8C_set_key(cpu, event.key.keysym.sym);
+      if (event.type == SDL_KEYUP) rem8C_unset_key(cpu, event.key.keysym.sym);
+    }
+
+    /* display logic */
+    rem8C_read_screen(cpu, 0, 0, screen_buff, sizeof(screen_buff));
+    render_screen(renderer, screen_buff);
+
+    /* cycle logic */
     rem8C_cycle(cpu);
 
-    rem8C_read_screen(cpu, 0, 0, screen_buff, sizeof(screen_buff));
-
-    int ch = getch();
-    if (ch == 'q') break;
-
-    render_display(screen_buff);
-
+    /* stalling execution */
     nanosleep(&clock_rate, NULL);
   }
 
-  end_display();
+  SDL_DestroyWindow(window);
+  SDL_DestroyRenderer(renderer);
   rem8C_free(cpu);
   return 0;
 }
 
-void initialize_display() {
-  initscr();
-  cbreak();
-  noecho();
-  curs_set(0);
-  keypad(stdscr, TRUE);
-  timeout(0);
+SDL_Window* create_window() {
+  return SDL_CreateWindow(
+      "CHIP-8 Emulator",
+      SDL_WINDOWPOS_UNDEFINED,
+      SDL_WINDOWPOS_UNDEFINED,
+      640,
+      320,
+      SDL_WINDOW_SHOWN
+  );
 }
 
-void draw_pixel(int x, int y, int on) {
-  mvaddch(y, x, on ? ACS_BLOCK: ' ');
-}
+void render_screen(SDL_Renderer* renderer, unsigned char data[SCREEN_WIDTH][SCREEN_HEIGHT]) {
+  SDL_RenderClear(renderer);
 
-void render_display(unsigned char screen_buff[SCREEN_WIDTH][SCREEN_HEIGHT]) {
-  int x, y;
+  int y, x;
   for (y = 0; y < SCREEN_HEIGHT; y++) {
     for (x = 0; x < SCREEN_WIDTH; x++) {
-      draw_pixel(x, y, screen_buff[x][y]);
+      SDL_SetRenderDrawColor(renderer, 150, 104, 23, 255);
+      if (data[x][y] == 1) {
+        SDL_SetRenderDrawColor(renderer, 252, 204, 46, 255);
+      }
+
+      SDL_Rect rect = {x * 10, y * 10, 9, 9};
+      SDL_RenderFillRect(renderer, &rect);
     }
   }
+  SDL_RenderPresent(renderer);
 }
 
-void end_display() {
-  endwin();
-}

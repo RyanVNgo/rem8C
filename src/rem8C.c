@@ -11,11 +11,13 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /******************** CPU & Internal ********************/
 
-#define KEY_DEFAULT   0xFF
 #define MEM_SIZE      0x0FFF
+#define KEY_ON        0x1
+#define KEY_OFF       0x0
 
 typedef struct rem8C {
   unsigned char data_reg[16];
@@ -25,7 +27,7 @@ typedef struct rem8C {
   unsigned char sound_timer;
   unsigned short pc;
   unsigned short sprite_addr;
-  unsigned char key;
+  unsigned char key[16];
   unsigned char screen[SCREEN_WIDTH][SCREEN_HEIGHT];
   unsigned char memory[MEM_SIZE];
 } rem8C;
@@ -212,8 +214,9 @@ void _instr_8XY5(rem8C* cpu) {
 void _instr_8XY6(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
-  cpu->data_reg[0x0F] = cpu->data_reg[Y] & 0x01;
+  unsigned char lsbit  = cpu->data_reg[Y] & 0x01;
   cpu->data_reg[X] = cpu->data_reg[Y] >> 1;
+  cpu->data_reg[0x0F] = lsbit;
 }
 
 /* Set VX to VY - VX , if borrow VF = 0x00 */
@@ -230,8 +233,9 @@ void _instr_8XY7(rem8C* cpu) {
 void _instr_8XYE(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
-  cpu->data_reg[0x0F] = ((cpu->data_reg[Y] & 0x80) != 0);
+  unsigned char msbit = ((cpu->data_reg[Y] & 0x80) != 0);
   cpu->data_reg[X] = cpu->data_reg[Y] << 1;
+  cpu->data_reg[0x0F] = msbit;
 }
 
 /* Skip following instruction if VX != VY */
@@ -282,15 +286,19 @@ void _instr_DXYN(rem8C* cpu) {
 /* Skip following instruction if key == VX */
 void _instr_EX9E(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  unsigned char X_val = cpu->data_reg[X] & 0x0F;
   cpu->pc++;
-  if (cpu->data_reg[X] == cpu->key) cpu->pc += 2;
+  if (cpu->key[X_val] == KEY_ON) cpu->pc += INSTR_SIZE;
 }
 
 /* Skip following instruction if key != VX */
 void _instr_EXA1(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  unsigned char X_val = cpu->data_reg[X] & 0x0F;
   cpu->pc++;
-  if (cpu->data_reg[X] != cpu->key) cpu->pc += 2;
+  if (cpu->key[X_val] == KEY_OFF) {
+    cpu->pc += INSTR_SIZE;
+  } 
 }
 
 /* Store delay timer into VX */
@@ -303,11 +311,14 @@ void _instr_FX07(rem8C* cpu) {
 /* Wait for keypress and store result in VX */
 void _instr_FX0A(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  cpu->pc++;
-  if (cpu->key == KEY_DEFAULT) {
-    cpu->pc -= INSTR_SIZE;
-  } else {
-    cpu->data_reg[X] = cpu->key;
+  cpu->pc--;
+  int i;
+  for (i = 0; i < 16; i++) {
+    if (cpu->key[i] == KEY_ON) {
+      cpu->data_reg[X] = i;
+      cpu->pc += INSTR_SIZE;
+      break;
+    }
   }
 }
 
@@ -489,6 +500,50 @@ void rem8C_memset(rem8C* cpu, unsigned short addr, void* data, size_t size) {
   memcpy(&cpu->memory[addr], data, size);
 }
 
+void rem8C_set_key(rem8C* cpu, unsigned char key) {
+  switch (key) {
+    case '0': cpu->key[0x0] = KEY_ON; break;
+    case '1': cpu->key[0x1] = KEY_ON; break;
+    case '2': cpu->key[0x2] = KEY_ON; break;
+    case '3': cpu->key[0x3] = KEY_ON; break;
+    case '4': cpu->key[0x4] = KEY_ON; break;
+    case '5': cpu->key[0x5] = KEY_ON; break;
+    case '6': cpu->key[0x6] = KEY_ON; break;
+    case '7': cpu->key[0x7] = KEY_ON; break;
+    case '8': cpu->key[0x8] = KEY_ON; break;
+    case '9': cpu->key[0x9] = KEY_ON; break;
+    case 'a': cpu->key[0xA] = KEY_ON; break;
+    case 'b': cpu->key[0xB] = KEY_ON; break;
+    case 'c': cpu->key[0xC] = KEY_ON; break;
+    case 'd': cpu->key[0xD] = KEY_ON; break;
+    case 'e': cpu->key[0xE] = KEY_ON; break;
+    case 'f': cpu->key[0xF] = KEY_ON; break;
+    default: break;
+  }
+}
+
+void rem8C_unset_key(rem8C* cpu, unsigned char key) {
+  switch (key) {
+    case '0': cpu->key[0x0] = KEY_OFF; break;
+    case '1': cpu->key[0x1] = KEY_OFF; break;
+    case '2': cpu->key[0x2] = KEY_OFF; break;
+    case '3': cpu->key[0x3] = KEY_OFF; break;
+    case '4': cpu->key[0x4] = KEY_OFF; break;
+    case '5': cpu->key[0x5] = KEY_OFF; break;
+    case '6': cpu->key[0x6] = KEY_OFF; break;
+    case '7': cpu->key[0x7] = KEY_OFF; break;
+    case '8': cpu->key[0x8] = KEY_OFF; break;
+    case '9': cpu->key[0x9] = KEY_OFF; break;
+    case 'a': cpu->key[0xA] = KEY_OFF; break;
+    case 'b': cpu->key[0xB] = KEY_OFF; break;
+    case 'c': cpu->key[0xC] = KEY_OFF; break;
+    case 'd': cpu->key[0xD] = KEY_OFF; break;
+    case 'e': cpu->key[0xE] = KEY_OFF; break;
+    case 'f': cpu->key[0xF] = KEY_OFF; break;
+    default: break;
+  }
+}
+
 /******************** Create/Destroy Cpu ********************/
 
 rem8C* rem8C_new() {
@@ -497,7 +552,6 @@ rem8C* rem8C_new() {
   cpu->stack_pointer = START_ADDR - 0x01;
   cpu->sprite_addr = 0x00;
   _rem8C_sprite_set(cpu, cpu->sprite_addr);
-  cpu->key = KEY_DEFAULT;
   return cpu;
 }
 

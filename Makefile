@@ -1,7 +1,7 @@
 # configuration
 CC = gcc
-CFLAGS = -std=c89 -Wall -I./src
-LDFLAGS = -lncurses
+CFLAGS = -std=c89 -Wall -I./src $(shell pkg-config --cflags sdl2)
+LDFLAGS = $(shell pkg-config --libs sdl2)
 
 SRC_DIR = src
 SOURCES = $(wildcard $(SRC_DIR)/*.c)
