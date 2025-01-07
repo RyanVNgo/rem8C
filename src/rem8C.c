@@ -5,17 +5,11 @@
 
 #include "rem8C.h"
 
-#ifdef TESTING
-#include "t_rem8C.h"
-#endif
-
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 /******************** CPU & Internal ********************/
 
-#define MEM_SIZE      0x0FFF
 #define KEY_ON        0x1
 #define KEY_OFF       0x0
 
@@ -27,10 +21,18 @@ typedef struct rem8C {
   unsigned char sound_timer;
   unsigned short pc;
   unsigned short sprite_addr;
+  unsigned char key_pressed;
   unsigned char key[16];
   unsigned char screen[SCREEN_WIDTH][SCREEN_HEIGHT];
-  unsigned char memory[MEM_SIZE];
+  unsigned char memory[MAX_ADDR];
 } rem8C;
+
+const static unsigned char key_binds[16] = {
+  [0x1] = '1', [0x2] = '2', [0x3] = '3', [0xC] = '4',
+  [0x4] = 'q', [0x5] = 'w', [0x6] = 'e', [0xD] = 'r',
+  [0x7] = 'a', [0x8] = 's', [0x9] = 'd', [0xE] = 'f',
+  [0xA] = 'z', [0x0] = 'x', [0xB] = 'c', [0xF] = 'v',
+};
 
 #define SPRITE_WIDTH  5
 
@@ -314,7 +316,7 @@ void _instr_FX0A(rem8C* cpu) {
   cpu->pc--;
   int i;
   for (i = 0; i < 16; i++) {
-    if (cpu->key[i] == KEY_ON) {
+    if (cpu->key[i] == KEY_OFF && cpu->key_pressed) {
       cpu->data_reg[X] = i;
       cpu->pc += INSTR_SIZE;
       break;
@@ -487,6 +489,11 @@ void rem8C_cycle(rem8C* cpu) {
 
 }
 
+void rem8C_update_timers(rem8C* cpu) {
+  if (cpu->delay_timer > 0) cpu->delay_timer--;
+  if (cpu->sound_timer > 0) cpu->sound_timer--;
+}
+
 void rem8C_read_screen(rem8C* cpu, int X, int Y, void* buff, long size) {
   unsigned char X_pos = X % SCREEN_WIDTH;
   unsigned char Y_pos = Y % SCREEN_HEIGHT;
@@ -501,46 +508,24 @@ void rem8C_memset(rem8C* cpu, unsigned short addr, void* data, size_t size) {
 }
 
 void rem8C_set_key(rem8C* cpu, unsigned char key) {
-  switch (key) {
-    case '0': cpu->key[0x0] = KEY_ON; break;
-    case '1': cpu->key[0x1] = KEY_ON; break;
-    case '2': cpu->key[0x2] = KEY_ON; break;
-    case '3': cpu->key[0x3] = KEY_ON; break;
-    case '4': cpu->key[0x4] = KEY_ON; break;
-    case '5': cpu->key[0x5] = KEY_ON; break;
-    case '6': cpu->key[0x6] = KEY_ON; break;
-    case '7': cpu->key[0x7] = KEY_ON; break;
-    case '8': cpu->key[0x8] = KEY_ON; break;
-    case '9': cpu->key[0x9] = KEY_ON; break;
-    case 'a': cpu->key[0xA] = KEY_ON; break;
-    case 'b': cpu->key[0xB] = KEY_ON; break;
-    case 'c': cpu->key[0xC] = KEY_ON; break;
-    case 'd': cpu->key[0xD] = KEY_ON; break;
-    case 'e': cpu->key[0xE] = KEY_ON; break;
-    case 'f': cpu->key[0xF] = KEY_ON; break;
-    default: break;
+  int i;
+  for (i = 0; i < 16; i++) {
+    if (key_binds[i] == key) {
+      cpu->key[i] = KEY_ON;
+      cpu->key_pressed = KEY_ON;
+      break;
+    }
   }
 }
 
 void rem8C_unset_key(rem8C* cpu, unsigned char key) {
-  switch (key) {
-    case '0': cpu->key[0x0] = KEY_OFF; break;
-    case '1': cpu->key[0x1] = KEY_OFF; break;
-    case '2': cpu->key[0x2] = KEY_OFF; break;
-    case '3': cpu->key[0x3] = KEY_OFF; break;
-    case '4': cpu->key[0x4] = KEY_OFF; break;
-    case '5': cpu->key[0x5] = KEY_OFF; break;
-    case '6': cpu->key[0x6] = KEY_OFF; break;
-    case '7': cpu->key[0x7] = KEY_OFF; break;
-    case '8': cpu->key[0x8] = KEY_OFF; break;
-    case '9': cpu->key[0x9] = KEY_OFF; break;
-    case 'a': cpu->key[0xA] = KEY_OFF; break;
-    case 'b': cpu->key[0xB] = KEY_OFF; break;
-    case 'c': cpu->key[0xC] = KEY_OFF; break;
-    case 'd': cpu->key[0xD] = KEY_OFF; break;
-    case 'e': cpu->key[0xE] = KEY_OFF; break;
-    case 'f': cpu->key[0xF] = KEY_OFF; break;
-    default: break;
+  int i;
+  for (i = 0; i < 16; i++) {
+    if (key_binds[i] == key) {
+      cpu->key[i] = KEY_OFF;
+      cpu->key_pressed = KEY_OFF;
+      break;
+    }
   }
 }
 
