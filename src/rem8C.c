@@ -10,9 +10,6 @@
 
 /******************** CPU & Internal ********************/
 
-#define KEY_ON        0x1
-#define KEY_OFF       0x0
-
 typedef struct rem8C {
   unsigned char data_reg[16];
   unsigned short I_register;
@@ -28,6 +25,9 @@ typedef struct rem8C {
   
 } rem8C;
 
+#define KEY_ON        0x1
+#define KEY_OFF       0x0
+
 const static unsigned char key_binds[16] = {
   [0x1] = '1', [0x2] = '2', [0x3] = '3', [0xC] = '4',
   [0x4] = 'q', [0x5] = 'w', [0x6] = 'e', [0xD] = 'r',
@@ -36,7 +36,7 @@ const static unsigned char key_binds[16] = {
 };
 
 #define FONT_SET_ADDR   0x0000
-#define SPRITE_WIDTH      5
+#define SPRITE_WIDTH    5
 
 void _rem8C_push_pc_to_stack(rem8C* cpu) {
   cpu->memory[cpu->stack_pointer] = cpu->pc & 0xFF;
