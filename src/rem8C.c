@@ -171,25 +171,28 @@ void _instr_8XY0(rem8C* cpu) {
   cpu->data_reg[X] = cpu->data_reg[Y];
 }
 
-/* Set VX to VX | VY */
+/* Set VX to VX | VY , reset 0x0F register */
 void _instr_8XY1(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->data_reg[X] |= cpu->data_reg[Y];
+  cpu->data_reg[0x0F] = 0x00;
 }
 
-/* Set VX to VX & VY */
+/* Set VX to VX & VY , reset 0x0F register */
 void _instr_8XY2(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->data_reg[X] &= cpu->data_reg[Y];
+  cpu->data_reg[0x0F] = 0x00;
 }
 
-/* Set VX to VX ^ VY */
+/* Set VX to VX ^ VY , reset 0x0F register */
 void _instr_8XY3(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->data_reg[X] ^= cpu->data_reg[Y];
+  cpu->data_reg[0x0F] = 0x00;
 }
 
 /* Set VX to VX + VY , if overflow VF = 0x01 */

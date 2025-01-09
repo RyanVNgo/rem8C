@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
 
   struct timespec clock_rate;
   clock_rate.tv_sec = 0;
-  clock_rate.tv_nsec = 200 * 1000;
+  clock_rate.tv_nsec = 2 * 1;
 
   /* running emulator */
   int running = 1;
