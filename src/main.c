@@ -120,7 +120,6 @@ void render_screen(SDL_Renderer* renderer, unsigned char data[SCREEN_WIDTH][SCRE
       if (data[x][y] == 1) {
         SDL_SetRenderDrawColor(renderer, 252, 204, 46, 255);
       }
-
       SDL_Rect rect = {x * 10, y * 10, 10, 10};
       SDL_RenderFillRect(renderer, &rect);
     }
