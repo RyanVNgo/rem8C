@@ -3,10 +3,10 @@
  *  @author Ryan V. Ngo
  */
 
+#include <stdio.h>
+
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_timer.h>
-#include <stdio.h>
-#include <time.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_events.h>
@@ -16,6 +16,12 @@
 
 SDL_Window* create_window();
 void render_screen(SDL_Renderer* renderer, unsigned char data[SCREEN_WIDTH][SCREEN_HEIGHT]);
+
+struct run_cpu_args {
+  rem8C* cpu;
+  int* running;
+};
+void run_cpu(struct run_cpu_args* args);
 
 int main(int argc, char* argv[]) {
   /* rom loading */
@@ -60,10 +66,6 @@ int main(int argc, char* argv[]) {
   SDL_Window* window = create_window();
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
 
-  struct timespec clock_rate;
-  clock_rate.tv_sec = 0;
-  clock_rate.tv_nsec = 2 * 1;
-
   /* running emulator */
   int running = 1;
   Uint32 last_time = 0;
@@ -79,20 +81,22 @@ int main(int argc, char* argv[]) {
       if (event.type == SDL_KEYUP) rem8C_unset_key(cpu, event.key.keysym.sym);
     }
 
-    /* display logic */
-    rem8C_read_screen(cpu, 0, 0, screen_buff, sizeof(screen_buff));
-    render_screen(renderer, screen_buff);
-
-    /* cycle logic */
-    rem8C_cycle(cpu);
+    /* timing and display logic */
     Uint32 curr_time = SDL_GetTicks();
-    if (curr_time - last_time >= 16) {
+    Uint32 elapsed_time = curr_time - last_time;
+    if (elapsed_time >= 17) {
       rem8C_update_timers(cpu);
+      int i;
+      for (i = 0; i < (elapsed_time / 2); i++) {
+        rem8C_cycle(cpu);
+      }
+
+      rem8C_read_screen(cpu, 0, 0, screen_buff, sizeof(screen_buff));
+      render_screen(renderer, screen_buff);
+
       last_time = curr_time;
     }
 
-    /* stalling execution */
-    nanosleep(&clock_rate, NULL);
   }
 
   SDL_DestroyWindow(window);
@@ -120,7 +124,6 @@ void render_screen(SDL_Renderer* renderer, unsigned char data[SCREEN_WIDTH][SCRE
       if (data[x][y] == 1) {
         SDL_SetRenderDrawColor(renderer, 252, 204, 46, 255);
       }
-
       SDL_Rect rect = {x * 10, y * 10, 10, 10};
       SDL_RenderFillRect(renderer, &rect);
     }

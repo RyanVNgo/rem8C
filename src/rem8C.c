@@ -10,12 +10,9 @@
 
 /******************** CPU & Internal ********************/
 
-#define KEY_ON        0x1
-#define KEY_OFF       0x0
-
 typedef struct rem8C {
   unsigned char data_reg[16];
-  unsigned short addr_reg;
+  unsigned short I_register;
   unsigned short stack_pointer;
   unsigned char delay_timer;
   unsigned char sound_timer;
@@ -25,7 +22,11 @@ typedef struct rem8C {
   unsigned char key[16];
   unsigned char screen[SCREEN_WIDTH][SCREEN_HEIGHT];
   unsigned char memory[MAX_ADDR];
+  
 } rem8C;
+
+#define KEY_ON        0x1
+#define KEY_OFF       0x0
 
 const static unsigned char key_binds[16] = {
   [0x1] = '1', [0x2] = '2', [0x3] = '3', [0xC] = '4',
@@ -34,7 +35,8 @@ const static unsigned char key_binds[16] = {
   [0xA] = 'z', [0x0] = 'x', [0xB] = 'c', [0xF] = 'v',
 };
 
-#define SPRITE_WIDTH  5
+#define FONT_SET_ADDR   0x0000
+#define SPRITE_WIDTH    5
 
 void _rem8C_push_pc_to_stack(rem8C* cpu) {
   cpu->memory[cpu->stack_pointer] = cpu->pc & 0xFF;
@@ -73,13 +75,32 @@ void _rem8C_sprite_set(rem8C* cpu, unsigned short loc) {
   memcpy(&cpu->memory[loc], sprite_data, sizeof(sprite_data));
 }
 
-void _rem8C_sprite_draw(rem8C* cpu, char X, char Y, unsigned char sprite) {
-  unsigned char X_pos = X % SCREEN_WIDTH;
-  unsigned char Y_pos = Y % SCREEN_HEIGHT;
-  int i;
-  for (i = 0; i < 8; i++) {
-    cpu->screen[X_pos + i][Y_pos] ^= (sprite >> (7 - i)) & 0x01;
+/*  Draw sprite to screen.
+ *  If any pixel is unset, return 1, otherwise 0.
+ */
+char _rem8C_sprite_draw(rem8C* cpu, char X, char Y, char height) {
+  char unset = 0;
+
+  unsigned char X_pos = X;
+  unsigned char Y_pos = Y;
+  if (X >= SCREEN_WIDTH || Y >= SCREEN_HEIGHT) {
+    X_pos = X % SCREEN_WIDTH;
+    Y_pos = Y % SCREEN_HEIGHT;
   }
+
+  int x, y;
+  for (y = 0; y < height; y++) {
+    unsigned char sprite_row = cpu->memory[cpu->I_register + y];
+    if (Y_pos + y >= SCREEN_HEIGHT) break;
+    for (x = 0; x < 8; x++) {
+      if (X_pos + x >= SCREEN_WIDTH) continue;
+      unsigned char init_val = cpu->screen[X_pos + x][Y_pos + y];
+      cpu->screen[X_pos + x][Y_pos + y] ^= (sprite_row >> (7 - x)) & 0x01;
+      if (cpu->screen[X_pos + x][Y_pos + y] == 0 && init_val != 0) unset = 1;
+    }
+  }
+
+  return unset;
 }
 
 void _rem8C_screen_clear(rem8C* cpu) {
@@ -254,7 +275,7 @@ void _instr_9XY0(rem8C* cpu) {
 void _instr_ANNN(rem8C* cpu) {
   unsigned char msb = cpu->memory[cpu->pc++];
   unsigned char lsb = cpu->memory[cpu->pc++];
-  cpu->addr_reg = ((msb & 0x0F) << 8) | lsb;
+  cpu->I_register = ((msb & 0x0F) << 8) | lsb;
 }
 
 /* Jump to address NNN + V0 */
@@ -276,16 +297,8 @@ void _instr_DXYN(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   unsigned char lsb = cpu->memory[cpu->pc++];
   unsigned char Y = _lsb_reg_idx(lsb);
-
-  unsigned char X_val = cpu->data_reg[X];
-  unsigned char Y_val = cpu->data_reg[Y];
   unsigned char N = lsb & 0x0F;
-
-  int i;
-  for (i = 0; i < N; i++) {
-    unsigned char sprite_row = cpu->memory[cpu->addr_reg + i];
-    _rem8C_sprite_draw(cpu, X_val, Y_val + i, sprite_row);
-  }
+  cpu->data_reg[0x0F] = _rem8C_sprite_draw(cpu, cpu->data_reg[X], cpu->data_reg[Y], N);
 }
 
 /* Skip following instruction if key == VX */
@@ -344,14 +357,14 @@ void _instr_FX18(rem8C* cpu) {
 /* Add value of VX to addr register  */
 void _instr_FX1E(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  cpu->addr_reg += cpu->data_reg[X];
+  cpu->I_register += cpu->data_reg[X];
   cpu->pc++;
 }
 
 /* Set addr register to sprite address of VX */
 void _instr_FX29(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  cpu->addr_reg = cpu->data_reg[X] * SPRITE_WIDTH + cpu->sprite_addr;
+  cpu->I_register = cpu->data_reg[X] * SPRITE_WIDTH + cpu->sprite_addr;
   cpu->pc++;
 }
 
@@ -362,7 +375,7 @@ void _instr_FX33(rem8C* cpu) {
 
   int i;
   for (i = 2; i >= 0; i--) {
-    cpu->memory[cpu->addr_reg + i] = val % 10;
+    cpu->memory[cpu->I_register + i] = val % 10;
     val /= 10;
   }
 
@@ -374,9 +387,9 @@ void _instr_FX55(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   int i;
   for (i = 0; i <= X; i++) {
-    cpu->memory[cpu->addr_reg + i] = cpu->data_reg[i];
+    cpu->memory[cpu->I_register + i] = cpu->data_reg[i];
   }
-  cpu->addr_reg += X + 1;
+  cpu->I_register += X + 1;
   cpu->pc++;
 }
 
@@ -385,9 +398,9 @@ void _instr_FX65(rem8C* cpu) {
   unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   int i;
   for (i = 0; i <= X; i++) {
-    cpu->data_reg[i] = cpu->memory[cpu->addr_reg + i] ;
+    cpu->data_reg[i] = cpu->memory[cpu->I_register + i] ;
   }
-  cpu->addr_reg += X + 1;
+  cpu->I_register += X + 1;
   cpu->pc++;
 }
 
@@ -538,7 +551,7 @@ rem8C* rem8C_new() {
   rem8C* cpu = malloc(sizeof(rem8C));
   cpu->pc = START_ADDR;
   cpu->stack_pointer = START_ADDR - 0x01;
-  cpu->sprite_addr = 0x00;
+  cpu->sprite_addr = FONT_SET_ADDR;
   _rem8C_sprite_set(cpu, cpu->sprite_addr);
   return cpu;
 }

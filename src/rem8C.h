@@ -18,8 +18,8 @@ typedef struct rem8C rem8C;
 
 /******************** Cpu Operations ********************/
 
-void rem8C_cycle(rem8C* cpu);
 void rem8C_update_timers(rem8C* cpu);
+void rem8C_cycle(rem8C* cpu);
 void rem8C_read_screen(rem8C* cpu, int X, int Y, void* buff, long size);
 void rem8C_memset(rem8C* cpu, unsigned short addr, void* data, size_t size);
 void rem8C_set_key(rem8C* cpu, unsigned char key);
