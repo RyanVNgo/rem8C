@@ -5,7 +5,7 @@ A CHIP-8 emulator made in C.
 This emulator was developed for the sake of learning and understanding the core functionality of computer systems at
 a rudimentary level. I primarily referenced [this page by mattmikolay](https://github.com/mattmikolay/chip-8/wiki/Mastering-CHIP%E2%80%908)
 when developing the emulator and utilized [Timendus's CHIP-8 test suite](https://github.com/Timendus/chip8-test-suite/tree/main)
-to evalute the functionality and accuracy of my emulator.
+to evalute the functionality and accuracy of the emulator.
 
 <sub>Some tests from [Timendus's CHIP-8 test suite](https://github.com/Timendus/chip8-test-suite/tree/main) running on the emulator:</sub>
 <p align='center'>
