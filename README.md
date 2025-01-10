@@ -9,10 +9,10 @@ to evalute the functionality and accuracy of my emulator.
 
 <sub>Some tests from [Timendus's CHIP-8 test suite](https://github.com/Timendus/chip8-test-suite/tree/main) running on the emulator:</sub>
 <p align='center'>
-  <img width="480" src='./images/IBM_test.png'      alt='IBM logo on emulated display'/>
-  <img width="480" src='./images/Flags_test.png'    alt='Flags test from Timendus Chip-8 test suite on emulated display'/>
-  <img width="480" src='./images/Corax_test.png'    alt='Corax test from Timendus Chip-8 test suite on emulated display'/>
-  <img width="480" src='./images/Quirks_test.png'   alt='Quirks test from Timendus Chip-8 test suite on emulated display'/>
+  <img width="320" src='./images/IBM_test.png'      alt='IBM logo on emulated display'/>
+  <img width="320" src='./images/Flags_test.png'    alt='Flags test from Timendus Chip-8 test suite on emulated display'/>
+  <img width="320" src='./images/Corax_test.png'    alt='Corax test from Timendus Chip-8 test suite on emulated display'/>
+  <img width="320" src='./images/Quirks_test.png'   alt='Quirks test from Timendus Chip-8 test suite on emulated display'/>
 </p>
 
 ## Downloading and Compiling
