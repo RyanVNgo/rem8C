@@ -4,3 +4,7 @@ obj/*.o
 
 # exec
 rem8C
+
+# roms or test dirs
+roms
+tests
