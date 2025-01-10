@@ -4,6 +4,7 @@
  */
 
 #include <stdio.h>
+#include <getopt.h>
 
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_timer.h>
@@ -17,38 +18,49 @@
 SDL_Window* create_window();
 void render_screen(SDL_Renderer* renderer, unsigned char data[SCREEN_WIDTH][SCREEN_HEIGHT]);
 
-struct run_cpu_args {
-  rem8C* cpu;
-  int* running;
-};
-void run_cpu(struct run_cpu_args* args);
-
 int main(int argc, char* argv[]) {
-  /* rom loading */
-  if (argc < 2) {
+  /* argument parsing */
+  char* rom_file = NULL;
+  unsigned short load_addr = START_ADDR;
+  unsigned short start_addr = START_ADDR;
+
+  int opt;
+  while ((opt = getopt(argc, argv, "r:l:s:")) != -1) {
+    switch (opt) {
+      case 'r':
+        rom_file = optarg;
+        break;
+      case 'l':
+        load_addr = strtoul(optarg, NULL, 16);
+        break;
+      case 's':
+        start_addr = strtoul(optarg, NULL, 16);
+        break;
+      default: break;
+    }
+  }
+
+  if (!rom_file) {
     printf("ROM not provided\n");
     return 1;
   }
 
-  FILE* rom = fopen(argv[1], "rb");
+  FILE* rom = fopen(rom_file, "rb");
   if (!rom) {
     printf("ROM not found \n");
     return 1;
   }
-
-  printf("ROM found.\n");
+  printf("ROM found: %s\n", rom_file);
 
   fseek(rom, 0, SEEK_END);
   long size = ftell(rom);
   printf("ROM size: %ld bytes\n", size);
   rewind(rom);
 
-  if (size > MAX_ADDR - START_ADDR) {
+  if (size > MAX_ADDR - start_addr) {
     fclose(rom);
-    printf("! ROM too large !\n");
-    printf("! ROM size: %ld bytes\n", size);
-    printf("! RAM size: %d bytes\n", MAX_ADDR - START_ADDR);
-    return 0;
+    printf("! ROM too large | ROM size: %ld bytes!\n", size);
+    return 1;
   }
 
   unsigned char* prog = malloc(sizeof(unsigned char) * size);
@@ -57,8 +69,8 @@ int main(int argc, char* argv[]) {
 
   /* preparing emulator */
   rem8C* cpu = rem8C_new();
-
-  rem8C_memset(cpu, START_ADDR, prog, size);
+  rem8C_set_start_addr(cpu, start_addr);
+  rem8C_memset(cpu, load_addr, prog, size);
   free(prog);
 
   unsigned char screen_buff[SCREEN_WIDTH][SCREEN_HEIGHT] = {0};
