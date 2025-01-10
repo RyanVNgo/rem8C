@@ -519,10 +519,6 @@ void rem8C_read_screen(rem8C* cpu, int X, int Y, void* buff, long size) {
   memcpy(buff, &cpu->screen[X_pos][Y_pos], size);
 }
 
-void rem8C_memset(rem8C* cpu, unsigned short addr, void* data, size_t size) {
-  memcpy(&cpu->memory[addr], data, size);
-}
-
 void rem8C_set_key(rem8C* cpu, unsigned char key) {
   int i;
   for (i = 0; i < 16; i++) {
@@ -543,6 +539,18 @@ void rem8C_unset_key(rem8C* cpu, unsigned char key) {
       break;
     }
   }
+}
+
+/******************** CHIP-8 Configuration ********************/
+
+void rem8C_set_start_addr(rem8C* cpu, unsigned short addr) {
+  if (addr >= MAX_ADDR) return;
+  cpu->pc = addr;
+}
+
+void rem8C_memset(rem8C* cpu, unsigned short addr, void* data, size_t size) {
+  if (addr + size >= MAX_ADDR) return;
+  memcpy(&cpu->memory[addr], data, size);
 }
 
 /******************** Create/Destroy Cpu ********************/
