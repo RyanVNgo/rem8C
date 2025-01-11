@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/******************** CPU & Internal ********************/
+/******************** CHIP-8 & Internal ********************/
 
 typedef struct rem8C {
   unsigned char data_reg[16];
@@ -404,7 +404,7 @@ void _instr_FX65(rem8C* cpu) {
   cpu->pc++;
 }
 
-/******************** Cpu Operations ********************/
+/******************** CHIP-8 Operations ********************/
 
 void rem8C_cycle(rem8C* cpu) {
   unsigned char msb = cpu->memory[cpu->pc];
@@ -553,7 +553,7 @@ void rem8C_memset(rem8C* cpu, unsigned short addr, void* data, size_t size) {
   memcpy(&cpu->memory[addr], data, size);
 }
 
-/******************** Create/Destroy Cpu ********************/
+/******************** CHIP-8 Create/Destroy ********************/
 
 rem8C* rem8C_new() {
   rem8C* cpu = malloc(sizeof(rem8C));
