@@ -80,6 +80,7 @@ int main(int argc, char* argv[]) {
 
   /* running emulator */
   int running = 1;
+  int pause = 0;
   Uint32 last_time = 0;
   while (running) {
     /* input logic */
@@ -91,7 +92,11 @@ int main(int argc, char* argv[]) {
       }
       if (event.type == SDL_KEYDOWN) rem8C_set_key(cpu, event.key.keysym.sym);
       if (event.type == SDL_KEYUP) rem8C_unset_key(cpu, event.key.keysym.sym);
+      if (event.key.keysym.sym == 'm') pause ^= 1;
     }
+    
+    /* pausing */
+    if (pause) continue;
 
     /* timing and display logic */
     Uint32 curr_time = SDL_GetTicks();
