@@ -50,4 +50,5 @@ The keypad input of rem8C is mapped as follows:
 
 Additional keybinds:
 - `esc`  - Exit the emulator.
+- `m`    - Pause the emulator.
 
