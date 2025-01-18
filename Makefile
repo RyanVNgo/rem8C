@@ -1,6 +1,6 @@
 # configuration
 CC = gcc
-CFLAGS = -std=c89 -Wall -I./src $(shell pkg-config --cflags sdl2)
+CFLAGS = -std=c99 -Wall -O -I./src $(shell pkg-config --cflags sdl2)
 LDFLAGS = $(shell pkg-config --libs sdl2)
 
 SRC_DIR = src

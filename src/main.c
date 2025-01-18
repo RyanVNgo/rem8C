@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <getopt.h>
+#include <stdint.h>
 
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_timer.h>
@@ -63,9 +64,14 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  unsigned char* prog = malloc(sizeof(unsigned char) * size);
-  fread(prog, sizeof(char), size, rom);
+  uint8_t* prog = malloc(sizeof(uint8_t) * size);
+  size_t objects_read = fread(prog, sizeof(uint8_t), size, rom);
   fclose(rom);
+
+  if (objects_read < size) {
+    printf("! Failed to read ROM data !");
+    return 1;
+  }
 
   /* preparing emulator */
   rem8C* cpu = rem8C_new();
@@ -73,7 +79,7 @@ int main(int argc, char* argv[]) {
   rem8C_memset(cpu, load_addr, prog, size);
   free(prog);
 
-  unsigned char screen_buff[SCREEN_WIDTH][SCREEN_HEIGHT] = {0};
+  uint8_t screen_buff[SCREEN_WIDTH][SCREEN_HEIGHT] = {0};
 
   SDL_Window* window = create_window();
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
@@ -103,14 +109,11 @@ int main(int argc, char* argv[]) {
     Uint32 elapsed_time = curr_time - last_time;
     if (elapsed_time >= 17) {
       rem8C_update_timers(cpu);
-      int i;
-      for (i = 0; i < (elapsed_time / 2); i++) {
+      for (uint32_t i = 0; i < (elapsed_time / 2); i++) {
         rem8C_cycle(cpu);
       }
-
       rem8C_read_screen(cpu, 0, 0, screen_buff, sizeof(screen_buff));
       render_screen(renderer, screen_buff);
-
       last_time = curr_time;
     }
 
@@ -133,10 +136,9 @@ SDL_Window* create_window() {
   );
 }
 
-void render_screen(SDL_Renderer* renderer, unsigned char data[SCREEN_WIDTH][SCREEN_HEIGHT]) {
-  int y, x;
-  for (y = 0; y < SCREEN_HEIGHT; y++) {
-    for (x = 0; x < SCREEN_WIDTH; x++) {
+void render_screen(SDL_Renderer* renderer, uint8_t data[SCREEN_WIDTH][SCREEN_HEIGHT]) {
+  for (int y = 0; y < SCREEN_HEIGHT; y++) {
+    for (int x = 0; x < SCREEN_WIDTH; x++) {
       SDL_SetRenderDrawColor(renderer, 150, 104, 23, 255);
       if (data[x][y] == 1) {
         SDL_SetRenderDrawColor(renderer, 252, 204, 46, 255);
