@@ -7,28 +7,29 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 /******************** CHIP-8 & Internal ********************/
 
 typedef struct rem8C {
-  unsigned char data_reg[16];
-  unsigned short I_register;
-  unsigned short stack_pointer;
-  unsigned char delay_timer;
-  unsigned char sound_timer;
-  unsigned short pc;
-  unsigned short sprite_addr;
-  unsigned char key_pressed;
-  unsigned char key[16];
-  unsigned char screen[SCREEN_WIDTH][SCREEN_HEIGHT];
-  unsigned char memory[MAX_ADDR];
+  uint8_t data_reg[16];
+  uint16_t I_register;
+  uint16_t stack_pointer;
+  uint8_t delay_timer;
+  uint8_t sound_timer;
+  uint16_t pc;
+  uint16_t sprite_addr;
+  uint8_t key_pressed;
+  uint8_t key[16];
+  uint8_t screen[SCREEN_WIDTH][SCREEN_HEIGHT];
+  uint8_t memory[MAX_ADDR];
   
 } rem8C;
 
 #define KEY_ON        0x1
 #define KEY_OFF       0x0
 
-const static unsigned char key_binds[16] = {
+static const uint8_t key_binds[16] = {
   [0x1] = '1', [0x2] = '2', [0x3] = '3', [0xC] = '4',
   [0x4] = 'q', [0x5] = 'w', [0x6] = 'e', [0xD] = 'r',
   [0x7] = 'a', [0x8] = 's', [0x9] = 'd', [0xE] = 'f',
@@ -47,14 +48,14 @@ void _rem8C_push_pc_to_stack(rem8C* cpu) {
 
 void _rem8C_pull_pc_from_stack(rem8C* cpu) {
   cpu->stack_pointer++;
-  unsigned char msb = cpu->memory[cpu->stack_pointer];
+  uint8_t msb = cpu->memory[cpu->stack_pointer];
   cpu->stack_pointer++;
-  unsigned char lsb = cpu->memory[cpu->stack_pointer];
+  uint8_t lsb = cpu->memory[cpu->stack_pointer];
   cpu->pc = (msb << 8) | lsb;
 }
 
-void _rem8C_sprite_set(rem8C* cpu, unsigned short loc) {
-  unsigned char sprite_data[80] = {
+void _rem8C_sprite_set(rem8C* cpu, uint16_t loc) {
+  uint8_t sprite_data[80] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, /* 0 */
     0x20, 0x60, 0x20, 0x20, 0x70, /* 1 */
     0xF0, 0x10, 0xF0, 0x80, 0xF0, /* 2 */
@@ -81,20 +82,19 @@ void _rem8C_sprite_set(rem8C* cpu, unsigned short loc) {
 char _rem8C_sprite_draw(rem8C* cpu, char X, char Y, char height) {
   char unset = 0;
 
-  unsigned char X_pos = X;
-  unsigned char Y_pos = Y;
+  uint8_t X_pos = X;
+  uint8_t Y_pos = Y;
   if (X >= SCREEN_WIDTH || Y >= SCREEN_HEIGHT) {
     X_pos = X % SCREEN_WIDTH;
     Y_pos = Y % SCREEN_HEIGHT;
   }
 
-  int x, y;
-  for (y = 0; y < height; y++) {
-    unsigned char sprite_row = cpu->memory[cpu->I_register + y];
+  for (int y = 0; y < height; y++) {
+    uint8_t sprite_row = cpu->memory[cpu->I_register + y];
     if (Y_pos + y >= SCREEN_HEIGHT) break;
-    for (x = 0; x < 8; x++) {
+    for (int x = 0; x < 8; x++) {
       if (X_pos + x >= SCREEN_WIDTH) continue;
-      unsigned char init_val = cpu->screen[X_pos + x][Y_pos + y];
+      uint8_t init_val = cpu->screen[X_pos + x][Y_pos + y];
       cpu->screen[X_pos + x][Y_pos + y] ^= (sprite_row >> (7 - x)) & 0x01;
       if (cpu->screen[X_pos + x][Y_pos + y] == 0 && init_val != 0) unset = 1;
     }
@@ -107,11 +107,11 @@ void _rem8C_screen_clear(rem8C* cpu) {
   memset(cpu->screen, 0x00, SCREEN_WIDTH * SCREEN_HEIGHT);
 }
 
-unsigned char _msb_reg_idx(unsigned char msb) {
+uint8_t _msb_reg_idx(uint8_t msb) {
   return msb & 0x0F;
 }
 
-unsigned char _lsb_reg_idx(unsigned char lsb) {
+uint8_t _lsb_reg_idx(uint8_t lsb) {
   return (lsb >> 4) & 0x0F;
 }
 
@@ -137,90 +137,90 @@ void _instr_00EE(rem8C* cpu) {
 
 /* Jump to address NNN */
 void _instr_1NNN(rem8C* cpu) {
-  unsigned char msb = cpu->memory[cpu->pc++];
-  unsigned char lsb = cpu->memory[cpu->pc++];
+  uint8_t msb = cpu->memory[cpu->pc++];
+  uint8_t lsb = cpu->memory[cpu->pc++];
   cpu->pc = ((msb & 0x0F) << 8) | lsb;
 }
 
 /* Execute subroutine starting at address NNN */
 void _instr_2NNN(rem8C* cpu) {
-  unsigned char msb = cpu->memory[cpu->pc++];
-  unsigned char lsb = cpu->memory[cpu->pc++];
+  uint8_t msb = cpu->memory[cpu->pc++];
+  uint8_t lsb = cpu->memory[cpu->pc++];
   _rem8C_push_pc_to_stack(cpu);
   cpu->pc = ((msb & 0x0F) << 8) | lsb;
 }
 
 /* Skip following instruction if VX == NN */
 void _instr_3XNN(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char lsb = cpu->memory[cpu->pc++];
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t lsb = cpu->memory[cpu->pc++];
   if (cpu->data_reg[X] == lsb) cpu->pc += INSTR_SIZE;
 }
 
 /* Skip following instruction if VX != NN */
 void _instr_4XNN(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char lsb = cpu->memory[cpu->pc++];
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t lsb = cpu->memory[cpu->pc++];
   if (cpu->data_reg[X] != lsb) cpu->pc += INSTR_SIZE;
 }
 
 /* Skip following instruction if VX == VY*/
 void _instr_5XY0(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   if (cpu->data_reg[X] == cpu->data_reg[Y]) cpu->pc += INSTR_SIZE;
 }
 
 /* Store value NN in VX */
 void _instr_6XNN(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char lsb = cpu->memory[cpu->pc++];
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t lsb = cpu->memory[cpu->pc++];
   cpu->data_reg[X] = lsb;
 }
 
 /* Add value NN to VX */
 void _instr_7XNN(rem8C* cpu) {
-  unsigned char msb = cpu->memory[cpu->pc++];
-  unsigned char lsb = cpu->memory[cpu->pc++];
+  uint8_t msb = cpu->memory[cpu->pc++];
+  uint8_t lsb = cpu->memory[cpu->pc++];
   cpu->data_reg[msb & 0x0F] += lsb;
 }
 
 /* Store the value of VY in VX */
 void _instr_8XY0(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->data_reg[X] = cpu->data_reg[Y];
 }
 
 /* Set VX to VX | VY , reset 0x0F register */
 void _instr_8XY1(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->data_reg[X] |= cpu->data_reg[Y];
   cpu->data_reg[0x0F] = 0x00;
 }
 
 /* Set VX to VX & VY , reset 0x0F register */
 void _instr_8XY2(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->data_reg[X] &= cpu->data_reg[Y];
   cpu->data_reg[0x0F] = 0x00;
 }
 
 /* Set VX to VX ^ VY , reset 0x0F register */
 void _instr_8XY3(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->data_reg[X] ^= cpu->data_reg[Y];
   cpu->data_reg[0x0F] = 0x00;
 }
 
 /* Set VX to VX + VY , if overflow VF = 0x01 */
 void _instr_8XY4(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char X_init = cpu->data_reg[X];
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X_init = cpu->data_reg[X];
   cpu->data_reg[X] += cpu->data_reg[Y];
   if (cpu->data_reg[X] < X_init) cpu->data_reg[0x0F] = 0x01;
   else cpu->data_reg[0x0F] = 0x00;
@@ -228,9 +228,9 @@ void _instr_8XY4(rem8C* cpu) {
 
 /* Set VX to VX - VY , if borrow VF = 0x00 */
 void _instr_8XY5(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char X_init = cpu->data_reg[X];
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X_init = cpu->data_reg[X];
   cpu->data_reg[X] -= cpu->data_reg[Y];
   if (X_init >= cpu->data_reg[Y]) cpu->data_reg[0x0F] = 0x01;
   else cpu->data_reg[0x0F] = 0x00;
@@ -238,18 +238,18 @@ void _instr_8XY5(rem8C* cpu) {
 
 /* Set VX to VY >> 1 , set VF to VY & 0x01 */
 void _instr_8XY6(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char lsbit  = cpu->data_reg[Y] & 0x01;
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t lsbit  = cpu->data_reg[Y] & 0x01;
   cpu->data_reg[X] = cpu->data_reg[Y] >> 1;
   cpu->data_reg[0x0F] = lsbit;
 }
 
 /* Set VX to VY - VX , if borrow VF = 0x00 */
 void _instr_8XY7(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char X_init = cpu->data_reg[X];
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X_init = cpu->data_reg[X];
   cpu->data_reg[X] = cpu->data_reg[Y] - cpu->data_reg[X];
   if (X_init <= cpu->data_reg[Y]) cpu->data_reg[0x0F] = 0x01;
   else cpu->data_reg[0x0F] = 0x00;
@@ -257,62 +257,62 @@ void _instr_8XY7(rem8C* cpu) {
 
 /* Set VX to VY << 1 , set VF to VY & 0x01 */
 void _instr_8XYE(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char msbit = ((cpu->data_reg[Y] & 0x80) != 0);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t msbit = ((cpu->data_reg[Y] & 0x80) != 0);
   cpu->data_reg[X] = cpu->data_reg[Y] << 1;
   cpu->data_reg[0x0F] = msbit;
 }
 
 /* Skip following instruction if VX != VY */
 void _instr_9XY0(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t Y = _lsb_reg_idx(cpu->memory[cpu->pc++]);
   if (cpu->data_reg[X] != cpu->data_reg[Y]) cpu->pc += INSTR_SIZE;
 }
 
 /* Store NNN in addr register */
 void _instr_ANNN(rem8C* cpu) {
-  unsigned char msb = cpu->memory[cpu->pc++];
-  unsigned char lsb = cpu->memory[cpu->pc++];
+  uint8_t msb = cpu->memory[cpu->pc++];
+  uint8_t lsb = cpu->memory[cpu->pc++];
   cpu->I_register = ((msb & 0x0F) << 8) | lsb;
 }
 
 /* Jump to address NNN + V0 */
 void _instr_BNNN(rem8C* cpu) {
-  unsigned char msb = cpu->memory[cpu->pc++];
-  unsigned char lsb = cpu->memory[cpu->pc++];
+  uint8_t msb = cpu->memory[cpu->pc++];
+  uint8_t lsb = cpu->memory[cpu->pc++];
   cpu->pc = (((msb & 0x0F) << 8) | lsb) + cpu->data_reg[0];
 }
 
 /* Set VX to random num with mask NN  */
 void _instr_CXNN(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char lsb = cpu->memory[cpu->pc++];
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t lsb = cpu->memory[cpu->pc++];
   cpu->data_reg[X] = (rand() % 0xFF) & lsb;
 }
 
 /* Draw sprite at (VX, VY) 8px wide and Npx tall */
 void _instr_DXYN(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char lsb = cpu->memory[cpu->pc++];
-  unsigned char Y = _lsb_reg_idx(lsb);
-  unsigned char N = lsb & 0x0F;
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t lsb = cpu->memory[cpu->pc++];
+  uint8_t Y = _lsb_reg_idx(lsb);
+  uint8_t N = lsb & 0x0F;
   cpu->data_reg[0x0F] = _rem8C_sprite_draw(cpu, cpu->data_reg[X], cpu->data_reg[Y], N);
 }
 
 /* Skip following instruction if key == VX */
 void _instr_EX9E(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char X_val = cpu->data_reg[X] & 0x0F;
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X_val = cpu->data_reg[X] & 0x0F;
   cpu->pc++;
   if (cpu->key[X_val] == KEY_ON) cpu->pc += INSTR_SIZE;
 }
 
 /* Skip following instruction if key != VX */
 void _instr_EXA1(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char X_val = cpu->data_reg[X] & 0x0F;
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X_val = cpu->data_reg[X] & 0x0F;
   cpu->pc++;
   if (cpu->key[X_val] == KEY_OFF) {
     cpu->pc += INSTR_SIZE;
@@ -321,17 +321,16 @@ void _instr_EXA1(rem8C* cpu) {
 
 /* Store delay timer into VX */
 void _instr_FX07(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->data_reg[X] = cpu->delay_timer;
   cpu->pc++;
 }
 
 /* Wait for keypress and store result in VX */
 void _instr_FX0A(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->pc--;
-  int i;
-  for (i = 0; i < 16; i++) {
+  for (int i = 0; i < 16; i++) {
     if (cpu->key[i] == KEY_OFF && cpu->key_pressed) {
       cpu->data_reg[X] = i;
       cpu->pc += INSTR_SIZE;
@@ -342,39 +341,38 @@ void _instr_FX0A(rem8C* cpu) {
 
 /* Set delay timer to value of VX */
 void _instr_FX15(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->delay_timer = cpu->data_reg[X];
   cpu->pc++;
 }
 
 /* Set sound timer to value of VX */
 void _instr_FX18(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->sound_timer = cpu->data_reg[X];
   cpu->pc++;
 }
 
 /* Add value of VX to addr register  */
 void _instr_FX1E(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->I_register += cpu->data_reg[X];
   cpu->pc++;
 }
 
 /* Set addr register to sprite address of VX */
 void _instr_FX29(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
   cpu->I_register = cpu->data_reg[X] * SPRITE_WIDTH + cpu->sprite_addr;
   cpu->pc++;
 }
 
 /* Store BCD of VX at addr of addr register */
 void _instr_FX33(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  unsigned char val = cpu->data_reg[X];
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  uint8_t val = cpu->data_reg[X];
 
-  int i;
-  for (i = 2; i >= 0; i--) {
+  for (int i = 2; i >= 0; i--) {
     cpu->memory[cpu->I_register + i] = val % 10;
     val /= 10;
   }
@@ -384,9 +382,8 @@ void _instr_FX33(rem8C* cpu) {
 
 /* Store V0 to VX in memory starting at addr register */
 void _instr_FX55(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  int i;
-  for (i = 0; i <= X; i++) {
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  for (int i = 0; i <= X; i++) {
     cpu->memory[cpu->I_register + i] = cpu->data_reg[i];
   }
   cpu->I_register += X + 1;
@@ -395,9 +392,8 @@ void _instr_FX55(rem8C* cpu) {
 
 /* File V0 to VX from memory starting at addr register */
 void _instr_FX65(rem8C* cpu) {
-  unsigned char X = _msb_reg_idx(cpu->memory[cpu->pc++]);
-  int i;
-  for (i = 0; i <= X; i++) {
+  uint8_t X = _msb_reg_idx(cpu->memory[cpu->pc++]);
+  for (int i = 0; i <= X; i++) {
     cpu->data_reg[i] = cpu->memory[cpu->I_register + i] ;
   }
   cpu->I_register += X + 1;
@@ -407,8 +403,8 @@ void _instr_FX65(rem8C* cpu) {
 /******************** CHIP-8 Operations ********************/
 
 void rem8C_cycle(rem8C* cpu) {
-  unsigned char msb = cpu->memory[cpu->pc];
-  unsigned char lsb = cpu->memory[cpu->pc + 1];
+  uint8_t msb = cpu->memory[cpu->pc];
+  uint8_t lsb = cpu->memory[cpu->pc + 1];
 
   switch (msb & 0xF0) {
     case 0x00:
@@ -511,17 +507,16 @@ void rem8C_update_timers(rem8C* cpu) {
 }
 
 void rem8C_read_screen(rem8C* cpu, int X, int Y, void* buff, long size) {
-  unsigned char X_pos = X % SCREEN_WIDTH;
-  unsigned char Y_pos = Y % SCREEN_HEIGHT;
+  uint8_t X_pos = X % SCREEN_WIDTH;
+  uint8_t Y_pos = Y % SCREEN_HEIGHT;
   if (X_pos * Y_pos + size > SCREEN_WIDTH * SCREEN_HEIGHT) {
     size -= (X_pos * Y_pos + size) - (SCREEN_WIDTH * SCREEN_HEIGHT);
   }
   memcpy(buff, &cpu->screen[X_pos][Y_pos], size);
 }
 
-void rem8C_set_key(rem8C* cpu, unsigned char key) {
-  int i;
-  for (i = 0; i < 16; i++) {
+void rem8C_set_key(rem8C* cpu, uint8_t key) {
+  for (int i = 0; i < 16; i++) {
     if (key_binds[i] == key) {
       cpu->key[i] = KEY_ON;
       cpu->key_pressed = KEY_ON;
@@ -530,9 +525,8 @@ void rem8C_set_key(rem8C* cpu, unsigned char key) {
   }
 }
 
-void rem8C_unset_key(rem8C* cpu, unsigned char key) {
-  int i;
-  for (i = 0; i < 16; i++) {
+void rem8C_unset_key(rem8C* cpu, uint8_t key) {
+  for (int i = 0; i < 16; i++) {
     if (key_binds[i] == key) {
       cpu->key[i] = KEY_OFF;
       cpu->key_pressed = KEY_OFF;
@@ -543,12 +537,12 @@ void rem8C_unset_key(rem8C* cpu, unsigned char key) {
 
 /******************** CHIP-8 Configuration ********************/
 
-void rem8C_set_start_addr(rem8C* cpu, unsigned short addr) {
+void rem8C_set_start_addr(rem8C* cpu, uint16_t addr) {
   if (addr >= MAX_ADDR) return;
   cpu->pc = addr;
 }
 
-void rem8C_memset(rem8C* cpu, unsigned short addr, void* data, size_t size) {
+void rem8C_memset(rem8C* cpu, uint16_t addr, void* data, size_t size) {
   if (addr + size >= MAX_ADDR) return;
   memcpy(&cpu->memory[addr], data, size);
 }
