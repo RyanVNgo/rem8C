@@ -16,7 +16,9 @@ to evalute the functionality and accuracy of the emulator.
 </p>
 
 ## Downloading and Compiling
-This project uses Make (`make`) as it's build system and SDL2 (`libsdl2-dev`) for graphics. Ensure you have both installed.
+> [!IMPORTANT]
+> This project uses Make (`make`) as it's build system and SDL2 (`libsdl2-dev`) for graphics.
+> Ensure these dependencies are installed.
 
 To download and build the project:
 ```sh
@@ -37,8 +39,8 @@ Usage:
   ./rem8C -r <ROM File> [-l {200}] [-s {200}]
 
 Options:
-  -l  <load_addr>     Address, in hex bar the decorator (i.e. 200 not 0x200), to load the ROM.
-  -s  <start_addr>    Address, in hex bar the decorator (i.e. 200 not 0x200), to start running.
+  -l  <load_addr>     Address, in hex without the decorator (i.e. 200 not 0x200), to load the ROM.
+  -s  <start_addr>    Address, in hex without the decorator (i.e. 200 not 0x200), to start running.
 ```
 
 ## Input
