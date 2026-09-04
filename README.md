@@ -1,3 +1,12 @@
+> [!NOTE]
+> **Archived — no longer maintained.**
+> 
+> This project was built during a brief interest in software emulators. The implementation is straightforward and most
+> of the effort was put into making an implementation that was conformant to the testing/verification tools I was using.
+> While there are still some missing/unstable features, I do not plan on continuing development in this repository.
+> 
+> Ultimately, this code is preserved as a record of past development and as a basis for potential future development.
+
 # rem8C - CHIP-8 Emulator
 
 A CHIP-8 emulator made in C.
